@@ -1,89 +1,87 @@
+use crate::mazecell::MazeCell;
 use image::{RgbImage, Rgb};
-use std::fmt::Write;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum MazeCell {
-    Wall,
-    Path,
-    TraversedPath,
-    Start,
-    End,
+pub trait ClampedAdd<Rhs = Self> {
+    type Output;
+
+    fn clamped_add(&self, rhs: Rhs) -> Self::Output;
 }
 
-impl MazeCell {
-    pub fn is_wall(&self) -> bool {
-        *self == MazeCell::Wall
-    }
+pub trait ClampedMul<Rhs = Self> {
+    type Output;
 
-    pub fn is_path(&self) -> bool {
-        *self == MazeCell::Path
-    }
-
-    pub fn is_start(&self) -> bool {
-        *self == MazeCell::Start
-    }
-
-    pub fn is_end(&self) -> bool {
-        *self == MazeCell::End
-    }
+    fn clamped_mul(&self, rhs: Rhs) -> Self::Output;
 }
 
-impl Default for MazeCell {
-    fn default() -> Self {
-        Self::Wall
-    }
-}
+impl ClampedMul<f32> for Rgb<u8> {
+    type Output = Rgb<u8>;
 
-impl std::fmt::Display for MazeCell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Wall => write!(f, "W"),
-            Self::Path => write!(f, "P"),
-            Self::TraversedPath => write!(f, " "),
-            Self::Start => write!(f, "S"),
-            Self::End => write!(f, "E"),
-        }
-    }
-}
+    fn clamped_mul(&self, rhs: f32) -> Self::Output {
+        let rgb = self.0;
 
-impl From<MazeCell> for Rgb<u8> {
-    fn from(mazecell: MazeCell) -> Self {
-        match mazecell {
-            MazeCell::Wall => Rgb([0, 0, 0]),
-            MazeCell::Path => Rgb([255, 255, 255]),
-            MazeCell::TraversedPath => Rgb([0, 0, 255]),
-            MazeCell::Start => Rgb([255, 0, 0]),
-            MazeCell::End => Rgb([0, 255, 0]),
-        }
+        let raw_r = (rgb[0] as f32 * rhs).round();
+        let raw_g = (rgb[1] as f32 * rhs).round();
+        let raw_b = (rgb[2] as f32 * rhs).round();
+
+        let r = if raw_r > u8::MAX as f32 {
+            u8::MAX
+        } else if raw_r < u8::MIN as f32 {
+            u8::MIN
+        } else {
+            raw_r as u8
+        };
+
+        let g = if raw_g > u8::MAX as f32 {
+            u8::MAX
+        } else if raw_g < u8::MIN as f32 { 
+            u8::MIN
+        } else {
+            raw_g as u8
+        };
+
+        let b = if raw_b > u8::MAX as f32 {
+            u8::MAX
+        } else if raw_b < u8::MIN as f32 {
+            u8::MIN
+        } else {
+            raw_b as u8
+        };
+
+        Rgb([r, g, b])
     }
 }
 
-impl TryFrom<(u8, u8, u8)> for MazeCell {
-    type Error = MazeError;
+impl ClampedAdd for Rgb<u8> {
+    type Output = Rgb<u8>;
 
-    fn try_from(pixel: (u8, u8, u8)) -> Result<Self, Self::Error> {
-        match pixel {
-            (0, 0, 0) => Ok(Self::Wall),
-            (255, 255, 255) => Ok(Self::Path),
-            (255, 0, 0) => Ok(Self::Start),
-            (0, 255, 0) => Ok(Self::End),
-            _ => Err(MazeError::InvalidPixelColor),
-        }
-    }
-}
+    fn clamped_add(&self, rhs: Rgb<u8>) -> Self::Output {
+        let rgb_self = self.0;
+        let rgb_rhs = rhs.0;
 
-impl TryFrom<Rgb<u8>> for MazeCell {
-    type Error = MazeError;
+        let raw_r = rgb_self[0].checked_add(rgb_rhs[0]);
+        let raw_g = rgb_self[1].checked_add(rgb_rhs[1]);
+        let raw_b = rgb_self[2].checked_add(rgb_rhs[2]);
 
-    fn try_from(pixel: Rgb<u8>) -> Result<Self, Self::Error> {
-        match pixel.0 {
-            [0, 0, 0] => Ok(Self::Wall),
-            [255, 255, 255] => Ok(Self::Path),
-            [255, 0, 0] => Ok(Self::Start),
-            [0, 255, 0] => Ok(Self::End),
-            _ => Err(MazeError::InvalidPixelColor),
-        }
-    }
+        let r = if let Some(r) = raw_r {
+            r
+        } else {
+            u8::MAX
+        };
+
+        let g = if let Some(g) = raw_g {
+            g
+        } else {
+            u8::MAX
+        };
+
+        let b = if let Some(b) = raw_b {
+            b
+        } else {
+            u8::MAX
+        };
+
+        Rgb([r, g, b])
+     }
 }
 
 pub struct Maze<const W: usize, const H: usize> {
@@ -156,11 +154,26 @@ impl<const W: usize, const H: usize> Maze<W, H> {
         self.path.clone()
     }
 
-    pub fn print_over_image(&self, image: &mut RgbImage) { // TODO: should be generic
+    // fn lerp(first_color: Rgb<u8>, second_color: Rgb<u8>, t: f32) -> Rgb<u8> {
+    //     first_color.clamped_mul(1.0 - t).clamped_add(second_color.clamped_mul(t))
+    // }
+
+    // TODO: should be generic
+    pub fn print_over_image<F>(&self, image: &mut RgbImage, f: F)
+    where
+        Rgb<u8>: ClampedMul<f32> + ClampedAdd,
+        F: Fn(Rgb<u8>, Rgb<u8>, f32) -> Rgb<u8>,
+    {
+        let len = self.path.len() as f32;
+
+        let red = Rgb([255, 0, 0]);
+        let green = Rgb([0, 255, 0]);
+
         self.path
             .iter()
-            .for_each(|(x, y)| {
-                image.put_pixel(*x as u32, *y as u32, self.maze[*y][*x].into())
+            .enumerate()
+            .for_each(|(idx, (x, y))| {
+                image.put_pixel(*x as u32, *y as u32, f(red, green, idx as f32 / len).into())
             })
     }
 }
