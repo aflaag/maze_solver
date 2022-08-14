@@ -6,6 +6,9 @@ pub const WHITE: Rgb<u8> = Rgb([255, 255, 255]);
 pub const RED: Rgb<u8> = Rgb([255, 0, 0]);
 pub const GREEN: Rgb<u8> = Rgb([0, 255, 0]);
 pub const BLUE: Rgb<u8> = Rgb([0, 0, 255]);
+pub const YELLOW: Rgb<u8> = Rgb([255, 255, 0]);
+pub const MAGENTA: Rgb<u8> = Rgb([255, 0, 255]);
+pub const CYAN: Rgb<u8> = Rgb([0, 255, 255]);
 
 pub trait ClampedAdd<Rhs = Self> {
     type Output;
@@ -154,6 +157,7 @@ impl<const W: usize, const H: usize> Maze<W, H> {
 
     pub fn solve(&mut self) {
         self.solve_internals(self.start);
+        self.path.remove(0);
     }
 
     pub fn path(&self) -> Vec<(usize, usize)> {
@@ -162,8 +166,7 @@ impl<const W: usize, const H: usize> Maze<W, H> {
 
     pub fn print_over_image<F>(&self, image: &mut RgbImage, f: F)
     where
-        Rgb<u8>: ClampedMul<f32> + ClampedAdd,
-        F: Fn(Rgb<u8>, Rgb<u8>, f32) -> Rgb<u8>,
+        F: Fn(f32, f32) -> Rgb<u8>,
     {
         let len = self.path.len() as f32;
 
@@ -171,15 +174,15 @@ impl<const W: usize, const H: usize> Maze<W, H> {
             .iter()
             .enumerate()
             .for_each(|(idx, (x, y))| {
-                image.put_pixel(*x as u32, *y as u32, f(RED, GREEN, idx as f32 / len).into())
+                image.put_pixel(*x as u32, *y as u32, f(idx as f32, len).into())
             })
     }
 }
 
-impl<const W: usize, const H: usize> TryFrom<&RgbImage> for Maze<W, H> {
+impl<const W: usize, const H: usize> TryFrom<RgbImage> for Maze<W, H> {
     type Error = MazeError;
 
-    fn try_from(image: &RgbImage) -> Result<Self, Self::Error> {
+    fn try_from(image: RgbImage) -> Result<Self, Self::Error> {
         if image.width() as usize != W || image.height() as usize != H {
             return Err(MazeError::IncompatibleDimensons)
         }
