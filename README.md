@@ -1,3 +1,5 @@
+![Solved Maze](maze_solved.png)
+
 # maze-solver
 
 - [ ] define constants

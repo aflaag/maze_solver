@@ -1,6 +1,12 @@
 use crate::mazecell::MazeCell;
 use image::{RgbImage, Rgb};
 
+pub const BLACK: Rgb<u8> = Rgb([0, 0, 0]);
+pub const WHITE: Rgb<u8> = Rgb([255, 255, 255]);
+pub const RED: Rgb<u8> = Rgb([255, 0, 0]);
+pub const GREEN: Rgb<u8> = Rgb([0, 255, 0]);
+pub const BLUE: Rgb<u8> = Rgb([0, 0, 255]);
+
 pub trait ClampedAdd<Rhs = Self> {
     type Output;
 
@@ -154,11 +160,6 @@ impl<const W: usize, const H: usize> Maze<W, H> {
         self.path.clone()
     }
 
-    // fn lerp(first_color: Rgb<u8>, second_color: Rgb<u8>, t: f32) -> Rgb<u8> {
-    //     first_color.clamped_mul(1.0 - t).clamped_add(second_color.clamped_mul(t))
-    // }
-
-    // TODO: should be generic
     pub fn print_over_image<F>(&self, image: &mut RgbImage, f: F)
     where
         Rgb<u8>: ClampedMul<f32> + ClampedAdd,
@@ -166,14 +167,11 @@ impl<const W: usize, const H: usize> Maze<W, H> {
     {
         let len = self.path.len() as f32;
 
-        let red = Rgb([255, 0, 0]);
-        let green = Rgb([0, 255, 0]);
-
         self.path
             .iter()
             .enumerate()
             .for_each(|(idx, (x, y))| {
-                image.put_pixel(*x as u32, *y as u32, f(red, green, idx as f32 / len).into())
+                image.put_pixel(*x as u32, *y as u32, f(RED, GREEN, idx as f32 / len).into())
             })
     }
 }

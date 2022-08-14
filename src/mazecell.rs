@@ -1,4 +1,4 @@
-use crate::maze::MazeError;
+use crate::maze::{MazeError, *};
 use image::Rgb;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,11 +49,11 @@ impl std::fmt::Display for MazeCell {
 impl From<MazeCell> for Rgb<u8> {
     fn from(mazecell: MazeCell) -> Self {
         match mazecell {
-            MazeCell::Wall => Rgb([0, 0, 0]),
-            MazeCell::Path => Rgb([255, 255, 255]),
-            MazeCell::TraversedPath => Rgb([0, 0, 255]),
-            MazeCell::Start => Rgb([255, 0, 0]),
-            MazeCell::End => Rgb([0, 255, 0]),
+            MazeCell::Wall => BLACK,
+            MazeCell::Path => WHITE,
+            MazeCell::TraversedPath => BLUE,
+            MazeCell::Start => RED,
+            MazeCell::End => GREEN,
         }
     }
 }
