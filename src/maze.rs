@@ -88,65 +88,68 @@ pub struct Maze {
     end: (usize, usize),
     path: Vec<(usize, usize)>,
     is_solved: bool,
+    width: usize,
+    height: usize,
 }
 
 impl Maze {
-    // fn get_directions((x, y): (usize, usize)) -> Vec<(usize, usize)> {
-    //     let mut directions = Vec::new();
-    //
-    //     if x != 0 {
-    //         directions.push((x - 1, y));
-    //     }
-    //
-    //     if x != W - 1 {
-    //         directions.push((x + 1, y));
-    //     }
-    //
-    //     if y != 0 {
-    //         directions.push((x, y - 1));
-    //     }
-    //
-    //     if y != H - 1 {
-    //         directions.push((x, y + 1));
-    //     }
-    //
-    //     directions
-    // }
-    //
-    // fn solve_internals(&mut self, (x, y): (usize, usize)) {
-    //     if (x, y) == self.end {
-    //         self.is_solved = true;
-    //         self.path.pop();
-    //
-    //         return;
-    //     }
-    //
-    //     let mut directions = Self::get_directions((x, y));
-    //
-    //     directions.retain(|(d_x, d_y)| self.maze[*d_y][*d_x].is_path() || self.maze[*d_y][*d_x].is_end());
-    //
-    //     for direction in directions {
-    //         let (d_x, d_y) = direction;
-    //
-    //         self.maze[d_y][d_x] = MazeCell::TraversedPath;
-    //
-    //         self.path.push(direction);
-    //
-    //         self.solve_internals(direction);
-    //
-    //         if self.is_solved {
-    //             return;
-    //         }
-    //
-    //         self.maze[d_y][d_x] = MazeCell::Path;
-    //
-    //         self.path.pop();
-    //     }
-    // }
+    fn get_directions(&self, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
+        let mut directions = Vec::new();
 
-    pub fn solve_internals(&mut self, (x, y): (usize, usize)) {
-        todo!()
+        if x != 0 {
+            directions.push((x - 1, y));
+        }
+
+        if x != self.width - 1 {
+            directions.push((x + 1, y));
+        }
+
+        if y != 0 {
+            directions.push((x, y - 1));
+        }
+
+        if y != self.height - 1 {
+            directions.push((x, y + 1));
+        }
+
+        directions
     }
+
+    fn solve_internals(&mut self, (x, y): (usize, usize)) {
+        if (x, y) == self.end {
+            self.is_solved = true;
+            self.path.pop();
+
+            return;
+        }
+
+        let mut directions = self.get_directions((x, y));
+
+        directions
+            .retain(|(d_x, d_y)| self.maze[*d_y][*d_x].is_path() || self.maze[*d_y][*d_x].is_end());
+
+        for direction in directions {
+            let (d_x, d_y) = direction;
+
+            self.maze[d_y][d_x] = MazeCell::TraversedPath;
+
+            self.path.push(direction);
+
+            self.solve_internals(direction);
+
+            if self.is_solved {
+                return;
+            }
+
+            self.maze[d_y][d_x] = MazeCell::Path;
+
+            self.path.pop();
+        }
+    }
+
+    // pub fn solve_internals(&mut self, (x, y): (usize, usize)) {
+    //     todo!()
+    // }
 
     pub fn solve(&mut self) {
         self.solve_internals(self.start);
@@ -179,11 +182,11 @@ impl TryFrom<RgbImage> for Maze {
         // }
 
         // let mut maze = [[MazeCell::default(); W]; H];
-        let w = image.width() as usize;
-        let h = image.height() as usize;
+        let width = image.width() as usize;
+        let height = image.height() as usize;
 
-        let mut maze: Vec<Vec<MazeCell>> = (0..h)
-            .map(|_| (0..w).map(|_| MazeCell::default()).collect())
+        let mut maze: Vec<Vec<MazeCell>> = (0..height)
+            .map(|_| (0..width).map(|_| MazeCell::default()).collect())
             .collect();
 
         if image
@@ -214,8 +217,8 @@ impl TryFrom<RgbImage> for Maze {
 
         match (start, end) {
             (Some(start_pos), Some(end_pos)) => {
-                let start = (start_pos % w, start_pos / h);
-                let end = (end_pos % w, end_pos / h);
+                let start = (start_pos % width, start_pos / height);
+                let end = (end_pos % width, end_pos / height);
 
                 Ok(Self {
                     maze,
@@ -223,6 +226,8 @@ impl TryFrom<RgbImage> for Maze {
                     end,
                     path: vec![start],
                     is_solved: false,
+                    width,
+                    height,
                 })
             }
             (_, _) => Err(MazeError::MissingEndpoints),
