@@ -1,5 +1,5 @@
 use crate::mazecell::MazeCell;
-use image::{RgbImage, Rgb};
+use image::{Rgb, RgbImage};
 
 pub const BLACK: Rgb<u8> = Rgb([0, 0, 0]);
 pub const WHITE: Rgb<u8> = Rgb([255, 255, 255]);
@@ -42,7 +42,7 @@ impl ClampedMul<f32> for Rgb<u8> {
 
         let g = if raw_g > u8::MAX as f32 {
             u8::MAX
-        } else if raw_g < u8::MIN as f32 { 
+        } else if raw_g < u8::MIN as f32 {
             u8::MIN
         } else {
             raw_g as u8
@@ -71,88 +71,81 @@ impl ClampedAdd for Rgb<u8> {
         let raw_g = rgb_self[1].checked_add(rgb_rhs[1]);
         let raw_b = rgb_self[2].checked_add(rgb_rhs[2]);
 
-        let r = if let Some(r) = raw_r {
-            r
-        } else {
-            u8::MAX
-        };
+        let r = if let Some(r) = raw_r { r } else { u8::MAX };
 
-        let g = if let Some(g) = raw_g {
-            g
-        } else {
-            u8::MAX
-        };
+        let g = if let Some(g) = raw_g { g } else { u8::MAX };
 
-        let b = if let Some(b) = raw_b {
-            b
-        } else {
-            u8::MAX
-        };
+        let b = if let Some(b) = raw_b { b } else { u8::MAX };
 
         Rgb([r, g, b])
-     }
+    }
 }
 
-pub struct Maze<const W: usize, const H: usize> {
-    maze: [[MazeCell; W]; H],
+pub struct Maze {
+    // maze: [[MazeCell; W]; H],
+    maze: Vec<Vec<MazeCell>>,
     start: (usize, usize),
     end: (usize, usize),
     path: Vec<(usize, usize)>,
     is_solved: bool,
 }
 
-impl<const W: usize, const H: usize> Maze<W, H> {
-    fn get_directions((x, y): (usize, usize)) -> Vec<(usize, usize)> {
-        let mut directions = Vec::new();
+impl Maze {
+    // fn get_directions((x, y): (usize, usize)) -> Vec<(usize, usize)> {
+    //     let mut directions = Vec::new();
+    //
+    //     if x != 0 {
+    //         directions.push((x - 1, y));
+    //     }
+    //
+    //     if x != W - 1 {
+    //         directions.push((x + 1, y));
+    //     }
+    //
+    //     if y != 0 {
+    //         directions.push((x, y - 1));
+    //     }
+    //
+    //     if y != H - 1 {
+    //         directions.push((x, y + 1));
+    //     }
+    //
+    //     directions
+    // }
+    //
+    // fn solve_internals(&mut self, (x, y): (usize, usize)) {
+    //     if (x, y) == self.end {
+    //         self.is_solved = true;
+    //         self.path.pop();
+    //
+    //         return;
+    //     }
+    //
+    //     let mut directions = Self::get_directions((x, y));
+    //
+    //     directions.retain(|(d_x, d_y)| self.maze[*d_y][*d_x].is_path() || self.maze[*d_y][*d_x].is_end());
+    //
+    //     for direction in directions {
+    //         let (d_x, d_y) = direction;
+    //
+    //         self.maze[d_y][d_x] = MazeCell::TraversedPath;
+    //
+    //         self.path.push(direction);
+    //
+    //         self.solve_internals(direction);
+    //
+    //         if self.is_solved {
+    //             return;
+    //         }
+    //
+    //         self.maze[d_y][d_x] = MazeCell::Path;
+    //
+    //         self.path.pop();
+    //     }
+    // }
 
-        if x != 0 {
-            directions.push((x - 1, y));
-        }
-
-        if x != W - 1 {
-            directions.push((x + 1, y));
-        }
-
-        if y != 0 {
-            directions.push((x, y - 1));
-        }
-
-        if y != H - 1 {
-            directions.push((x, y + 1));
-        }
-
-        directions
-    }
-
-    fn solve_internals(&mut self, (x, y): (usize, usize)) {
-        if (x, y) == self.end {
-            self.is_solved = true;
-            self.path.pop();
-
-            return;
-        }
-
-        let mut directions = Self::get_directions((x, y));
-
-        directions.retain(|(d_x, d_y)| self.maze[*d_y][*d_x].is_path() || self.maze[*d_y][*d_x].is_end());
-
-        for direction in directions {
-            let (d_x, d_y) = direction;
-
-            self.maze[d_y][d_x] = MazeCell::TraversedPath;
-
-            self.path.push(direction);
-
-            self.solve_internals(direction);
-
-            if self.is_solved {
-                return;
-            }
-
-            self.maze[d_y][d_x] = MazeCell::Path;
-
-            self.path.pop();
-        }
+    pub fn solve_internals(&mut self, (x, y): (usize, usize)) {
+        todo!()
     }
 
     pub fn solve(&mut self) {
@@ -173,23 +166,30 @@ impl<const W: usize, const H: usize> Maze<W, H> {
         self.path
             .iter()
             .enumerate()
-            .for_each(|(idx, (x, y))| {
-                image.put_pixel(*x as u32, *y as u32, f(idx as f32, len).into())
-            })
+            .for_each(|(idx, (x, y))| image.put_pixel(*x as u32, *y as u32, f(idx as f32, len)))
     }
 }
 
-impl<const W: usize, const H: usize> TryFrom<RgbImage> for Maze<W, H> {
+impl TryFrom<RgbImage> for Maze {
     type Error = MazeError;
 
     fn try_from(image: RgbImage) -> Result<Self, Self::Error> {
-        if image.width() as usize != W || image.height() as usize != H {
-            return Err(MazeError::IncompatibleDimensons)
-        }
+        // if image.width() as usize != W || image.height() as usize != H {
+        //     return Err(MazeError::IncompatibleDimensons)
+        // }
 
-        let mut maze = [[MazeCell::default(); W]; H];
+        // let mut maze = [[MazeCell::default(); W]; H];
+        let w = image.width() as usize;
+        let h = image.height() as usize;
 
-        if image.enumerate_pixels().any(|(_, _, pixel)| MazeCell::try_from(*pixel).is_err()) {
+        let mut maze: Vec<Vec<MazeCell>> = (0..h)
+            .map(|_| (0..w).map(|_| MazeCell::default()).collect())
+            .collect();
+
+        if image
+            .enumerate_pixels()
+            .any(|(_, _, pixel)| MazeCell::try_from(*pixel).is_err())
+        {
             return Err(MazeError::InvalidPixelColor);
         }
 
@@ -199,7 +199,9 @@ impl<const W: usize, const H: usize> TryFrom<RgbImage> for Maze<W, H> {
             .for_each(|((_, pixel_row), row)| {
                 pixel_row
                     .zip(row.iter_mut())
-                    .for_each(|((_, _, pixel), element)| *element = MazeCell::try_from(*pixel).unwrap());
+                    .for_each(|((_, _, pixel), element)| {
+                        *element = MazeCell::try_from(*pixel).unwrap()
+                    });
             });
 
         let start = image
@@ -212,12 +214,18 @@ impl<const W: usize, const H: usize> TryFrom<RgbImage> for Maze<W, H> {
 
         match (start, end) {
             (Some(start_pos), Some(end_pos)) => {
-                let start = (start_pos % W, start_pos / H);
-                let end = (end_pos % W, end_pos / H);
+                let start = (start_pos % w, start_pos / h);
+                let end = (end_pos % w, end_pos / h);
 
-                Ok(Self { maze, start, end, path: vec![start], is_solved: false })
-            },
-            (_, _) => Err(MazeError::MissingEndpoints)
+                Ok(Self {
+                    maze,
+                    start,
+                    end,
+                    path: vec![start],
+                    is_solved: false,
+                })
+            }
+            (_, _) => Err(MazeError::MissingEndpoints),
         }
     }
 }
@@ -225,7 +233,6 @@ impl<const W: usize, const H: usize> TryFrom<RgbImage> for Maze<W, H> {
 #[derive(Debug)]
 pub enum MazeError {
     InvalidPixelColor,
-    IncompatibleDimensons,
     MissingEndpoints,
     TooManyEndpoints,
 }
@@ -234,7 +241,6 @@ impl std::fmt::Display for MazeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Self::InvalidPixelColor => writeln!(f, "There are invalid colors inside the image."),
-            Self::IncompatibleDimensons => writeln!(f, "The image has incompatible declared dimensions."),
             Self::MissingEndpoints => writeln!(f, "There are no endpoints (start and end)."),
             Self::TooManyEndpoints => writeln!(f, "There are too many endpoints (start and end)."),
         }

@@ -1,2 +1,2 @@
-pub mod mazecell;
 pub mod maze;
+pub mod mazecell;
